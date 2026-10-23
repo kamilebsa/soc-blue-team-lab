@@ -1,21 +1,21 @@
 SOC Blue Team Lab
 
-Laboratório educacional de cibersegurança defensiva, inspirado nas atividades de um Security Operations Center (SOC).
+Laboratório educacional de cibersegurança defensiva inspirado nas atividades de um Security Operations Center (SOC).
 
 Sobre o projeto
 
-O SOC Blue Team Lab é um projeto desenvolvido para praticar análise de logs, detecção de atividades suspeitas, registro de eventos de segurança e visualização de alertas.
-
-O objetivo é construir uma base prática em Python, APIs e monitoramento defensivo, com foco em atividades relacionadas a SOC e Blue Team.
+O SOC Blue Team Lab é um projeto prático desenvolvido em Python para estudar análise de logs, detecção de atividades suspeitas, registro de eventos e monitoramento defensivo.
 
 Funcionalidades
 
-- SOC Log Analyzer: analisa eventos de segurança em arquivos JSONL e gera relatórios.
+- SOC Log Analyzer: analisa eventos de segurança armazenados em arquivos JSONL.
 - Brute Force Detector: identifica padrões de tentativas repetidas de login malsucedidas.
-- Mini SIEM API: recebe eventos, armazena registros e disponibiliza consultas por API.
-- Detecção automática: gera um alerta crítico quando são registradas cinco falhas de login para o mesmo IP.
-- Dashboard: apresenta estatísticas, eventos recentes e alertas de segurança.
-- Persistência: mantém os eventos registrados em arquivo JSONL após reiniciar a API.
+- Mini SIEM API: recebe, armazena e consulta eventos de segurança.
+- Detecção de força bruta: gera alertas quando uma regra identifica tentativas suspeitas.
+- Dashboard: apresenta estatísticas, eventos recentes e alertas.
+- Coletor de eventos de rede: registra uma observação do IP local e envia o evento à API.
+- Persistência: mantém os eventos registrados em arquivos JSONL.
+- Testes automatizados: verifica funcionalidades com Pytest.
 
 Tecnologias utilizadas
 
@@ -32,24 +32,26 @@ Estrutura do projeto
 soc-blue-team-lab/
 ├── data/
 │   ├── security_events.jsonl
-│   └── siem_events.jsonl
-├── dashboard/
-│   └── index.html
-├── reports/
+│   └── arquivos locais de eventos
 ├── src/
 │   ├── analyzer/
 │   │   └── log_analyzer.py
 │   ├── detector/
-│   │   └── brute_force.py
+│   │   ├── brute_force.py
+│   │   ├── network_detector.py
+│   │   └── network_collector.py
 │   └── siem/
 │       └── api.py
-└── tests/
-    ├── test_log_analyzer.py
-    └── test_brute_force.py
+├── tests/
+│   ├── test_log_analyzer.py
+│   ├── test_brute_force.py
+│   └── test_network_detector.py
+├── README.md
+└── .gitignore
 
 Como executar
 
-Instale as dependências necessárias no ambiente Python:
+Instale as dependências:
 
 pip install fastapi uvicorn pytest
 
@@ -57,29 +59,31 @@ Na raiz do projeto, inicie a API:
 
 python -m uvicorn src.siem.api:app --host 127.0.0.1 --port 8000
 
-Acesse no navegador:
+Mantenha a API em execução. Acesse pelo navegador:
 
 - Dashboard: http://127.0.0.1:8000/dashboard
-- Documentação interativa da API: http://127.0.0.1:8000/docs
+- Documentação da API: http://127.0.0.1:8000/docs
 - Eventos: http://127.0.0.1:8000/events
 - Alertas: http://127.0.0.1:8000/alerts
 - Estatísticas: http://127.0.0.1:8000/stats
 
-Mantenha o servidor em execução enquanto acessa essas páginas.
+Para executar o coletor, abra outra sessão do Termux, entre na pasta do projeto e execute:
+
+python -m src.detector.network_collector
 
 Executar os testes
 
+Na pasta do projeto, execute:
+
 python -m pytest -v
 
-Última validação registrada: 8 testes passaram.
+O projeto passou anteriormente em 12 testes automatizados. Execute novamente para confirmar o resultado atual.
 
 Exemplo de detecção
 
-Durante os testes do laboratório, cinco falhas de login foram registradas para o IP fictício "198.51.100.25".
+Durante os testes, cinco falhas de login para o mesmo IP fictício podem acionar um alerta "brute_force_detected" com severidade "CRITICAL", conforme a regra configurada.
 
-O sistema gerou um evento "brute_force_detected" com severidade "CRITICAL".
-
-Os endereços utilizados nos exemplos são reservados para documentação e testes.
+Os endereços usados nos exemplos são reservados para documentação e testes.
 
 Objetivos de aprendizagem
 
@@ -93,7 +97,7 @@ Objetivos de aprendizagem
 
 Limitações atuais
 
-Este é um laboratório educacional. Ele não substitui um SIEM de produção e ainda não está integrado a redes ou equipamentos reais. As regras de detecção são simplificadas e podem precisar de ajustes para cenários reais.
+Este é um laboratório educacional. Não substitui um SIEM de produção e não realiza captura completa do tráfego de rede. O coletor atual registra uma observação do IP local e envia o evento à API. As regras de detecção são simplificadas e precisam de validação em cenários reais.
 
 Próximos passos
 
