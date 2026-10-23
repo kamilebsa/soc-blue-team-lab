@@ -1,38 +1,41 @@
-SOC Blue Team Lab
+# SOC Blue Team Lab
 
 Laboratório educacional de cibersegurança defensiva inspirado nas atividades de um Security Operations Center (SOC).
 
-Sobre o projeto
+## Sobre o projeto
 
-O SOC Blue Team Lab é um projeto prático desenvolvido em Python para estudar análise de logs, detecção de atividades suspeitas, registro de eventos e monitoramento defensivo.
+Projeto desenvolvido em Python para praticar análise de logs, identificação de atividades suspeitas, registro de eventos e monitoramento defensivo.
 
-Funcionalidades
+## Funcionalidades
 
-- SOC Log Analyzer: analisa eventos de segurança armazenados em arquivos JSONL.
-- Brute Force Detector: identifica padrões de tentativas repetidas de login malsucedidas.
-- Mini SIEM API: recebe, armazena e consulta eventos de segurança.
-- Detecção de força bruta: gera alertas quando uma regra identifica tentativas suspeitas.
-- Dashboard: apresenta estatísticas, eventos recentes e alertas.
-- Coletor de eventos de rede: registra uma observação do IP local e envia o evento à API.
-- Persistência: mantém os eventos registrados em arquivos JSONL.
-- Testes automatizados: verifica funcionalidades com Pytest.
+- **SOC Log Analyzer:** analisa e classifica eventos de segurança.
+- **Brute Force Detector:** identifica tentativas repetidas de login malsucedidas.
+- **Mini SIEM API:** recebe, armazena e consulta eventos por meio de uma API REST.
+- **Detecção de força bruta:** gera um alerta crítico após cinco falhas de login para o mesmo IP, conforme a regra implementada.
+- **Persistência:** armazena eventos em SQLite e mantém registros em JSONL.
+- **Autenticação:** protege os endpoints de eventos, alertas e estatísticas com chave de API.
+- **Dashboard:** disponibiliza uma interface web para visualização de informações.
+- **Eventos de rede:** inclui ferramentas experimentais de análise e coleta.
+- **Testes automatizados:** utiliza Pytest para verificar funcionalidades.
 
-Tecnologias utilizadas
+## Tecnologias
 
 - Python
-- FastAPI
-- Uvicorn
-- Pytest
+- FastAPI e Uvicorn
+- SQLite
 - JSON e JSONL
 - HTML
-- Git
+- Pytest
+- Git e GitHub
 
-Estrutura do projeto
+## Estrutura do projeto
 
+```text
 soc-blue-team-lab/
+├── dashboard/
+│   └── index.html
 ├── data/
-│   ├── security_events.jsonl
-│   └── arquivos locais de eventos
+│   └── arquivos locais de eventos e banco SQLite
 ├── src/
 │   ├── analyzer/
 │   │   └── log_analyzer.py
@@ -41,71 +44,100 @@ soc-blue-team-lab/
 │   │   ├── network_detector.py
 │   │   └── network_collector.py
 │   └── siem/
-│       └── api.py
+│       ├── api.py
+│       └── database.py
 ├── tests/
-│   ├── test_log_analyzer.py
+│   ├── test_api.py
 │   ├── test_brute_force.py
+│   ├── test_database.py
+│   ├── test_log_analyzer.py
 │   └── test_network_detector.py
 ├── README.md
 └── .gitignore
+```
 
-Como executar
+## Instalação
 
-Instale as dependências:
+Requisitos: Python e pip instalados.
 
-pip install fastapi uvicorn pytest
+Na raiz do projeto, instale as dependências:
 
-Na raiz do projeto, inicie a API:
+```bash
+python -m pip install fastapi uvicorn pytest httpx
+```
 
+## Configuração da chave de API
+
+Os endpoints protegidos exigem a variável de ambiente `SIEM_API_KEY`.
+
+No Linux ou Termux, configure uma chave local antes de iniciar a API:
+
+```bash
+export SIEM_API_KEY="substitua-por-uma-chave-local-forte"
+```
+
+Use uma chave própria. Não publique a chave real no GitHub nem a inclua nos arquivos do projeto.
+
+## Como executar
+
+Com a chave configurada, inicie a API na raiz do projeto:
+
+```bash
 python -m uvicorn src.siem.api:app --host 127.0.0.1 --port 8000
+```
 
-Mantenha a API em execução. Acesse pelo navegador:
+Acesse pelo navegador no mesmo dispositivo:
 
 - Dashboard: http://127.0.0.1:8000/dashboard
-- Documentação da API: http://127.0.0.1:8000/docs
-- Eventos: http://127.0.0.1:8000/events
-- Alertas: http://127.0.0.1:8000/alerts
-- Estatísticas: http://127.0.0.1:8000/stats
+- Documentação interativa: http://127.0.0.1:8000/docs
+- Status da API: http://127.0.0.1:8000/
 
-Para executar o coletor, abra outra sessão do Termux, entre na pasta do projeto e execute:
+Os endpoints abaixo exigem o cabeçalho `X-API-Key`:
 
-python -m src.detector.network_collector
+- `POST /events` — registra um evento.
+- `GET /events` — consulta eventos registrados.
+- `GET /alerts` — consulta eventos classificados como HIGH ou CRITICAL.
+- `GET /stats` — consulta estatísticas de eventos e alertas.
 
-Executar os testes
+Para chamar os endpoints protegidos, envie o cabeçalho `X-API-Key` com o mesmo valor configurado em `SIEM_API_KEY`.
 
-Na pasta do projeto, execute:
+Para executar o coletor, consulte o código em `src/detector/network_collector.py` e siga os requisitos definidos nele. A API deve estar em execução quando o coletor precisar enviar eventos.
 
+## Testes automatizados
+
+Execute na raiz do projeto:
+
+```bash
 python -m pytest -v
+```
 
-O projeto passou anteriormente em 12 testes automatizados. Execute novamente para confirmar o resultado atual.
+Na última execução registrada neste ambiente, **27 testes passaram**, sem falhas. Execute novamente para confirmar o resultado atual.
 
-Exemplo de detecção
+## Exemplo de detecção
 
-Durante os testes, cinco falhas de login para o mesmo IP fictício podem acionar um alerta "brute_force_detected" com severidade "CRITICAL", conforme a regra configurada.
+A regra implementada pode gerar um evento `brute_force_detected`, com severidade `CRITICAL`, após cinco falhas de login para o mesmo IP.
 
-Os endereços usados nos exemplos são reservados para documentação e testes.
+Utilize somente eventos fictícios ou ambientes de laboratório autorizados.
 
-Objetivos de aprendizagem
+## Limitações
 
-- Análise e classificação de logs.
-- Identificação de padrões de autenticação suspeitos.
-- Desenvolvimento e consulta de APIs.
-- Armazenamento persistente de eventos.
-- Visualização de alertas de segurança.
-- Testes automatizados com Pytest.
-- Controle de versão com Git.
+Este projeto é educacional e não substitui um SIEM de produção.
 
-Limitações atuais
+- Não realiza captura completa do tráfego de rede.
+- O coletor registra uma observação do IP local; isso não equivale a monitoramento completo da rede.
+- As regras de detecção são simplificadas e precisam ser avaliadas em cenários mais abrangentes.
+- A detecção de força bruta utiliza uma regra básica, sem correlação avançada ou janela temporal.
+- A lista de eventos utilizada pela regra de detecção é mantida em memória durante a execução da API.
 
-Este é um laboratório educacional. Não substitui um SIEM de produção e não realiza captura completa do tráfego de rede. O coletor atual registra uma observação do IP local e envia o evento à API. As regras de detecção são simplificadas e precisam de validação em cenários reais.
+## Próximas melhorias
 
-Próximos passos
+- Aprimorar a correlação e as regras de detecção.
+- Expandir os testes da API e do coletor.
+- Melhorar o tratamento de eventos após reinicializações.
+- Documentar investigações e cenários de resposta a incidentes.
 
-- Ampliar a análise de eventos de rede.
-- Criar testes automatizados para a API.
-- Melhorar as regras de correlação e detecção.
-- Documentar novos cenários de investigação.
+## Objetivo de aprendizagem
 
-Aviso
+Praticar análise de logs, detecção baseada em regras, APIs REST, armazenamento de eventos, autenticação, testes automatizados e controle de versão.
 
-Projeto destinado ao aprendizado de cibersegurança defensiva, análise de logs e monitoramento de eventos em ambiente de laboratório.
+Projeto destinado ao aprendizado de cibersegurança defensiva em ambiente de laboratório.
