@@ -4,4 +4,6 @@ __pycache__/
 .venv/
 siem.log
 data/*.jsonl
+data/*.db
 .pytest_cache/
+*.bak

@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from src.siem import api
 
 
-client = TestClient(api.app)
+client = TestClient(api.app, headers={"X-API-Key": "chave-teste-local"})
 
 
 def test_home_returns_online_status():
@@ -93,3 +93,40 @@ def test_brute_force_generates_alert_after_five_failures():
     assert data["alert"] is not None
     assert data["alert"]["event_type"] == "brute_force_detected"
     assert data["alert"]["severity"] == "CRITICAL"
+
+
+def test_events_rejects_missing_api_key():
+    client_without_key = TestClient(api.app)
+    response = client_without_key.get("/events")
+    assert response.status_code == 401
+
+
+def test_events_rejects_invalid_api_key():
+    client_with_wrong_key = TestClient(api.app)
+    response = client_with_wrong_key.get(
+        "/events",
+        headers={"X-API-Key": "chave-errada"},
+    )
+    assert response.status_code == 401
+
+def test_alerts_rejects_missing_api_key():
+    response = TestClient(api.app).get("/alerts")
+    assert response.status_code == 401
+
+
+def test_stats_rejects_missing_api_key():
+    response = TestClient(api.app).get("/stats")
+    assert response.status_code == 401
+
+
+def test_create_event_rejects_missing_api_key():
+    response = TestClient(api.app).post(
+        "/events",
+        json={
+            "event_type": "test_event",
+            "source_ip": "192.0.2.10",
+            "message": "Teste sem chave",
+            "severity": "INFO",
+        },
+    )
+    assert response.status_code == 401

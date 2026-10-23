@@ -1,10 +1,14 @@
 from datetime import datetime, timezone
 from pathlib import Path
 import json
+import os
+import secrets
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Header, HTTPException, Depends
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+
+from src.siem import database
 
 app = FastAPI(
     title="Mini SIEM API",
@@ -15,8 +19,15 @@ app = FastAPI(
 BASE_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = BASE_DIR / "data"
 EVENTS_FILE = DATA_DIR / "siem_events.jsonl"
+DB_FILE = database.DB_FILE
 DASHBOARD_FILE = BASE_DIR / "dashboard" / "index.html"
 BRUTE_FORCE_THRESHOLD = 5
+API_KEY = os.getenv("SIEM_API_KEY")
+
+
+def verify_api_key(x_api_key: str = Header(default=None, alias="X-API-Key")):
+    if not API_KEY or not x_api_key or not secrets.compare_digest(x_api_key, API_KEY):
+        raise HTTPException(status_code=401, detail="Chave de API inválida ou ausente")
 
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -43,10 +54,18 @@ def load_events():
     return records
 
 
-events = load_events()
+database.init_db(DB_FILE)
+events = database.get_events(DB_FILE)
+if not events:
+    legacy_events = load_events()
+    for legacy_event in legacy_events:
+        if all(key in legacy_event for key in ("id", "timestamp", "event_type", "source_ip", "message")):
+            database.save_event(legacy_event, DB_FILE)
+    events = database.get_events(DB_FILE)
 
 
 def save_event(event):
+    database.save_event(event, DB_FILE)
     with EVENTS_FILE.open("a", encoding="utf-8") as file:
         file.write(json.dumps(event, ensure_ascii=False) + "\n")
 
@@ -108,7 +127,7 @@ def dashboard():
 
 
 @app.post("/events")
-def create_event(event: SecurityEvent):
+def create_event(event: SecurityEvent, _: None = Depends(verify_api_key)):
     record = event.dict()
     record["id"] = max(
         (item.get("id", 0) for item in events),
@@ -131,25 +150,28 @@ def create_event(event: SecurityEvent):
 
 
 @app.get("/events")
-def list_events():
-    return {"total": len(events), "events": events}
+def list_events(_: None = Depends(verify_api_key)):
+    stored_events = database.get_events(DB_FILE)
+    return {"total": len(stored_events), "events": stored_events}
 
 
 @app.get("/alerts")
-def list_alerts():
+def list_alerts(_: None = Depends(verify_api_key)):
+    stored_events = database.get_events(DB_FILE)
     alerts = [
-        event for event in events
+        event for event in stored_events
         if event.get("severity", "INFO").upper() in ("HIGH", "CRITICAL")
     ]
     return {"total": len(alerts), "alerts": alerts}
 
 
 @app.get("/stats")
-def statistics():
+def statistics(_: None = Depends(verify_api_key)):
+    stored_events = database.get_events(DB_FILE)
     return {
-        "total_events": len(events),
+        "total_events": len(stored_events),
         "total_alerts": sum(
-            1 for event in events
+            1 for event in stored_events
             if event.get("severity", "INFO").upper()
             in ("HIGH", "CRITICAL")
         )
