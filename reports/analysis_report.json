@@ -1,0 +1,34 @@
+[
+  {
+    "line": 1,
+    "timestamp": "2026-10-23T10:00:00",
+    "event_type": "login_failed",
+    "source_ip": "192.0.2.10",
+    "severity": "WARNING",
+    "message": "Failed login attempt"
+  },
+  {
+    "line": 2,
+    "timestamp": "2026-10-23T10:01:00",
+    "event_type": "login_success",
+    "source_ip": "192.0.2.20",
+    "severity": "INFO",
+    "message": "User login successful"
+  },
+  {
+    "line": 3,
+    "timestamp": "2026-10-23T10:02:00",
+    "event_type": "system_alert",
+    "source_ip": "192.0.2.30",
+    "severity": "CRITICAL",
+    "message": "Malware detected on endpoint"
+  },
+  {
+    "line": 4,
+    "timestamp": "2026-10-23T10:03:00",
+    "event_type": "network_event",
+    "source_ip": "192.0.2.40",
+    "severity": "HIGH",
+    "message": "Suspicious activity detected"
+  }
+]
