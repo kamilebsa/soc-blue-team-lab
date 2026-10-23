@@ -1,1 +1,7 @@
 {"event_type": "login_failed", "source_ip": "192.0.2.10", "message": "Teste de persistencia", "severity": "HIGH", "id": 1, "timestamp": "2026-10-23T19:49:59.432013+00:00"}
+{"event_type": "login_failed", "source_ip": "198.51.100.25", "message": "Teste de falha de login", "severity": "WARNING", "id": 2, "timestamp": "2026-10-23T20:01:40.663095+00:00"}
+{"event_type": "login_failed", "source_ip": "198.51.100.25", "message": "Teste de falha de login", "severity": "WARNING", "id": 3, "timestamp": "2026-10-23T20:01:42.675436+00:00"}
+{"event_type": "login_failed", "source_ip": "198.51.100.25", "message": "Teste de falha de login", "severity": "WARNING", "id": 4, "timestamp": "2026-10-23T20:01:43.542236+00:00"}
+{"event_type": "login_failed", "source_ip": "198.51.100.25", "message": "Teste de falha de login", "severity": "WARNING", "id": 5, "timestamp": "2026-10-23T20:02:20.017480+00:00"}
+{"event_type": "login_failed", "source_ip": "198.51.100.25", "message": "Teste de falha de login", "severity": "WARNING", "id": 6, "timestamp": "2026-10-23T20:02:21.246031+00:00"}
+{"event_type": "brute_force_detected", "source_ip": "198.51.100.25", "message": "Força bruta detectada: 5 falhas de login registradas para este IP", "severity": "CRITICAL", "id": 7, "timestamp": "2026-10-23T20:02:21.246311+00:00"}
