@@ -1,0 +1,1 @@
+{"event_type": "login_failed", "source_ip": "192.0.2.10", "message": "Teste de persistencia", "severity": "HIGH", "id": 1, "timestamp": "2026-10-23T19:49:59.432013+00:00"}
