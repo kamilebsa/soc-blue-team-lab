@@ -1,4 +1,5 @@
 
+
 from fastapi.testclient import TestClient
 
 from src.siem import api
@@ -32,7 +33,6 @@ def test_list_alerts_returns_expected_structure():
 
 def test_stats_returns_expected_structure():
     response = client.get("/stats")
-
     assert response.status_code == 200
 
     data = response.json()
@@ -68,3 +68,28 @@ def test_create_event_rejects_missing_fields():
     )
 
     assert response.status_code == 422
+def test_brute_force_generates_alert_after_five_failures():
+    source_ip = "198.51.100.25"
+
+    api.events[:] = [
+        event for event in api.events
+        if event.get("source_ip") != source_ip
+    ]
+
+    for attempt in range(5):
+        response = client.post(
+            "/events",
+            json={
+                "event_type": "login_failed",
+                "source_ip": source_ip,
+                "message": f"Falha de login {attempt + 1}",
+                "severity": "WARNING",
+            },
+        )
+        assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["alert"] is not None
+    assert data["alert"]["event_type"] == "brute_force_detected"
+    assert data["alert"]["severity"] == "CRITICAL"
