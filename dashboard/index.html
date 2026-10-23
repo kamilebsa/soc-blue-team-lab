@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SOC Blue Team Dashboard</title>
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #0b1120;
+  --panel: #151f32;
+  --border: #263650;
+  --text: #e5edf8;
+  --muted: #9aabc3;
+  --blue: #60a5fa;
+  --red: #f87171;
+  --yellow: #fbbf24;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 20px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, sans-serif;
+}
+header { margin-bottom: 24px; }
+h1 { margin: 0 0 6px; font-size: 25px; }
+p { color: var(--muted); }
+.status { color: #86efac; font-size: 13px; }
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.card, section {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.card span { color: var(--muted); font-size: 13px; }
+.card strong { display: block; font-size: 30px; margin-top: 8px; }
+h2 { font-size: 17px; margin-top: 0; }
+button {
+  background: var(--blue);
+  color: #07111f;
+  border: 0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.item {
+  border-top: 1px solid var(--border);
+  padding: 12px 0;
+  overflow-wrap: anywhere;
+}
+.item:first-of-type { border-top: 0; }
+.meta { color: var(--muted); font-size: 12px; margin-top: 5px; }
+.severity { font-weight: bold; }
+.HIGH, .CRITICAL { color: var(--red); }
+.WARNING { color: var(--yellow); }
+.INFO { color: var(--blue); }
+.error { color: var(--red); }
+footer { color: var(--muted); font-size: 12px; margin-top: 20px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>SOC Blue Team</h1>
+  <p>Security Operations Center — laboratório defensivo</p>
+  <div id="status" class="status">Conectando à API...</div>
+</header>
+
+<div class="cards">
+  <div class="card"><span>Total de eventos</span><strong id="total">—</strong></div>
+  <div class="card"><span>Total de alertas</span><strong id="alerts">—</strong></div>
+  <div class="card"><span>Eventos recentes</span><strong id="recent">—</strong></div>
+</div>
+
+<section>
+  <h2>Alertas de segurança</h2>
+  <div id="alertList">Carregando alertas...</div>
+</section>
+
+<section>
+  <h2>Eventos registrados</h2>
+  <button onclick="refreshDashboard()">Atualizar painel</button>
+  <div id="eventList">Carregando eventos...</div>
+</section>
+
+<footer>Projeto educacional SOC / Blue Team. Dados do laboratório.</footer>
+
+<script>
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;",
+    '"': "&quot;", "'": "&#39;"
+  })[c]);
+}
+
+function renderItems(container, items) {
+  if (!items.length) {
+    container.innerHTML = "<p>Nenhum registro encontrado.</p>";
+    return;
+  }
+  container.innerHTML = items.slice().reverse().map(event => `
+    <div class="item">
+      <div><strong>${escapeHtml(event.event_type || "Evento")}</strong>
+      — <span class="severity ${escapeHtml(event.severity || "INFO")}">${escapeHtml(event.severity || "INFO")}</span></div>
+      <div>${escapeHtml(event.message || "")}</div>
+      <div class="meta">Origem: ${escapeHtml(event.source_ip || "não informada")}
+      ${event.timestamp ? " · " + escapeHtml(event.timestamp) : ""}</div>
+    </div>
+  `).join("");
+}
+
+async function refreshDashboard() {
+  const status = document.getElementById("status");
+  try {
+    const [statsResponse, eventsResponse, alertsResponse] = await Promise.all([
+      fetch("/stats"),
+      fetch("/events"),
+      fetch("/alerts")
+    ]);
+
+    if (![statsResponse, eventsResponse, alertsResponse].every(r => r.ok)) {
+      throw new Error("A API retornou um erro.");
+    }
+
+    const stats = await statsResponse.json();
+    const eventsData = await eventsResponse.json();
+    const alertsData = await alertsResponse.json();
+    const events = Array.isArray(eventsData) ? eventsData : eventsData.events || [];
+    const alerts = Array.isArray(alertsData) ? alertsData : alertsData.alerts || [];
+
+    document.getElementById("total").textContent =
+      stats.total_events ?? eventsData.total ?? events.length;
+    document.getElementById("alerts").textContent =
+      stats.total_alerts ?? alertsData.total ?? alerts.length;
+    document.getElementById("recent").textContent = events.length;
+
+    renderItems(document.getElementById("alertList"), alerts);
+    renderItems(document.getElementById("eventList"), events);
+    status.textContent = "● API conectada";
+    status.className = "status";
+  } catch (error) {
+    status.textContent = "API desconectada. Inicie o servidor no Termux.";
+    status.className = "error";
+    document.getElementById("alertList").textContent = "Não foi possível carregar.";
+    document.getElementById("eventList").textContent = "Não foi possível carregar.";
+  }
+}
+
+refreshDashboard();
+</script>
+</body>
+</html>
