@@ -69,3 +69,11 @@ def statistics():
             if event["severity"].upper() in ("HIGH", "CRITICAL")
         )
     }
+
+from fastapi.responses import FileResponse
+from pathlib import Path
+
+@app.get("/dashboard", include_in_schema=False)
+def dashboard():
+    caminho = Path(__file__).resolve().parents[2] / "dashboard" / "index.html"
+    return FileResponse(caminho)
