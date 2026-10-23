@@ -3,4 +3,5 @@ __pycache__/
 .env
 .venv/
 siem.log
-siem.log
+data/*.jsonl
+.pytest_cache/
