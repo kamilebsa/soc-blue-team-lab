@@ -20,8 +20,10 @@ app = FastAPI(
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = BASE_DIR / "data"
-EVENTS_FILE = DATA_DIR / "siem_events.jsonl"
-DB_FILE = database.DB_FILE
+EVENTS_FILE = Path(
+    os.getenv("SIEM_EVENTS_FILE", str(DATA_DIR / "siem_events.jsonl"))
+)
+DB_FILE = Path(os.getenv("SIEM_DB_FILE", str(database.DB_FILE)))
 DASHBOARD_FILE = BASE_DIR / "dashboard" / "index.html"
 BRUTE_FORCE_THRESHOLD = 5
 API_KEY = os.getenv("SIEM_API_KEY")
@@ -80,12 +82,13 @@ class SecurityEvent(BaseModel):
         return value
 
 
-def load_events():
+def load_events(events_file=None):
     records = []
-    if not EVENTS_FILE.exists():
+    path = Path(events_file) if events_file else EVENTS_FILE
+    if not path.exists():
         return records
 
-    with EVENTS_FILE.open("r", encoding="utf-8") as file:
+    with path.open("r", encoding="utf-8") as file:
         for line in file:
             if line.strip():
                 try:
@@ -95,14 +98,22 @@ def load_events():
     return records
 
 
-database.init_db(DB_FILE)
-events = database.get_events(DB_FILE)
-if not events:
-    legacy_events = load_events()
-    for legacy_event in legacy_events:
-        if all(key in legacy_event for key in ("id", "timestamp", "event_type", "source_ip", "message")):
-            database.save_event(legacy_event, DB_FILE)
-    events = database.get_events(DB_FILE)
+def initialize_storage(db_file=None, events_file=None):
+    db_path = Path(db_file) if db_file else DB_FILE
+    database.init_db(db_path)
+    stored_events = database.get_events(db_path)
+
+    if not stored_events:
+        required = ("id", "timestamp", "event_type", "source_ip", "message")
+        for legacy_event in load_events(events_file):
+            if all(key in legacy_event for key in required):
+                database.save_event(legacy_event, db_path)
+        stored_events = database.get_events(db_path)
+
+    return stored_events
+
+
+events = initialize_storage()
 
 
 def save_event(event):
