@@ -70,7 +70,24 @@ Execute:
 python -m pytest -q
 ```
 
-Na validação mais recente documentada durante o desenvolvimento, 45 testes passaram. Execute novamente para conferir o estado atual. Avisos de depreciação das dependências podem aparecer mesmo quando os testes passam.
+Na validação realizada em 2026-10-27, **55 testes passaram e nenhum falhou**. Foram exibidos 7 avisos de depreciação nas dependências Starlette/HTTPX. Esses avisos não impediram a aprovação dos testes.
+
+## Validação HTTP da API
+
+Em 2026-10-27, foram realizados testes locais com Uvicorn em `127.0.0.1:8765`, usando banco SQLite e arquivo JSONL isolados em um diretório temporário.
+
+Resultados observados:
+
+- `GET /`: HTTP 200.
+- Autenticação: requisições sem chave ou com chave incorreta retornaram HTTP 401; chave válida retornou HTTP 200.
+- Validação de entrada: endereço IP inválido retornou HTTP 422 e não foi persistido.
+- Persistência: um evento permaneceu disponível após reiniciar o servidor de teste.
+- Detecção: cinco falhas de login para o mesmo IP geraram um alerta `brute_force_detected` de severidade `CRITICAL`.
+- Deduplicação: falha adicional para um IP já alertado não gerou outro alerta para a mesma origem.
+- Múltiplas origens: dois IPs de teste distintos geraram dois alertas distintos.
+- Guardian: `GET /guardian` retornou HTTP 200 e apresentou decisões em modo `simulation`, com `executed: false`.
+
+Os endereços `192.0.2.90` e `192.0.2.91` pertencem a uma faixa reservada para documentação e testes. Os resultados acima representam uma validação de laboratório, não uma avaliação de segurança em produção.
 
 ## Persistência e reinicialização
 
