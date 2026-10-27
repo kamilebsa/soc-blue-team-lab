@@ -1,143 +1,113 @@
 # SOC Blue Team Lab
 
-Laboratório educacional de cibersegurança defensiva inspirado nas atividades de um Security Operations Center (SOC).
-
-## Sobre o projeto
-
-Projeto desenvolvido em Python para praticar análise de logs, identificação de atividades suspeitas, registro de eventos e monitoramento defensivo.
+Laboratório educacional de operações defensivas (SOC), desenvolvido em Python para praticar análise de eventos, detecção baseada em regras, persistência, autenticação de API e validação de respostas.
 
 ## Funcionalidades
 
-- **SOC Log Analyzer:** analisa e classifica eventos de segurança.
-- **Brute Force Detector:** identifica tentativas repetidas de login malsucedidas.
-- **Mini SIEM API:** recebe, armazena e consulta eventos por meio de uma API REST.
-- **Detecção de força bruta:** gera um alerta crítico após cinco falhas de login para o mesmo IP, conforme a regra implementada.
-- **Persistência:** armazena eventos em SQLite e mantém registros em JSONL.
-- **Autenticação:** protege os endpoints de eventos, alertas e estatísticas com chave de API.
-- **Dashboard:** disponibiliza uma interface web para visualização de informações.
-- **Eventos de rede:** inclui ferramentas experimentais de análise e coleta.
-- **Testes automatizados:** utiliza Pytest para verificar funcionalidades.
+- Análise e classificação de eventos de segurança.
+- Detecção experimental de tentativas repetidas de login.
+- API REST com FastAPI para registrar e consultar eventos.
+- Autenticação por chave nas rotas protegidas.
+- Persistência local em SQLite e registros JSONL.
+- Dashboard web para consulta visual.
+- Guardian para avaliar eventos e sugerir respostas defensivas em modo de simulação.
+- Testes automatizados com Pytest.
 
-## Tecnologias
+## Arquitetura
 
-- Python
-- FastAPI e Uvicorn
-- SQLite
-- JSON e JSONL
-- HTML
-- Pytest
-- Git e GitHub
+- `src/analyzer/`: análise de logs.
+- `src/detector/`: detecção e ferramentas experimentais de rede.
+- `src/siem/`: API e persistência de eventos.
+- `src/guardian/`: avaliação e recomendação de resposta defensiva.
+- `dashboard/`: interface web.
+- `tests/`: testes automatizados.
+- `scripts/soc-api.sh`: controle da API local.
+- `data/`: dados locais, que não devem ser publicados.
 
-## Estrutura do projeto
+## Requisitos
 
-```text
-soc-blue-team-lab/
-├── dashboard/
-│   └── index.html
-├── data/
-│   └── arquivos locais de eventos e banco SQLite
-├── src/
-│   ├── analyzer/
-│   │   └── log_analyzer.py
-│   ├── detector/
-│   │   ├── brute_force.py
-│   │   ├── network_detector.py
-│   │   └── network_collector.py
-│   └── siem/
-│       ├── api.py
-│       └── database.py
-├── tests/
-│   ├── test_api.py
-│   ├── test_brute_force.py
-│   ├── test_database.py
-│   ├── test_log_analyzer.py
-│   └── test_network_detector.py
-├── README.md
-└── .gitignore
-```
+- Python 3.10 ou superior.
+- Dependências: FastAPI, Uvicorn, Pytest e HTTPX.
 
-## Instalação
-
-Requisitos: Python e pip instalados.
-
-Na raiz do projeto, instale as dependências:
+Instale as dependências, se necessário:
 
 ```bash
 python -m pip install fastapi uvicorn pytest httpx
 ```
 
-## Configuração da chave de API
+## Configuração segura
 
-Os endpoints protegidos exigem a variável de ambiente `SIEM_API_KEY`.
-
-No Linux ou Termux, configure uma chave local antes de iniciar a API:
+Configure uma chave local antes de iniciar a API. Não coloque a chave real no código, no README ou no Git.
 
 ```bash
-export SIEM_API_KEY="substitua-por-uma-chave-local-forte"
+export SIEM_API_KEY="SUBSTITUA_POR_UMA_CHAVE_FORTE"
 ```
 
-Use uma chave própria. Não publique a chave real no GitHub nem a inclua nos arquivos do projeto.
+Use somente uma chave própria de laboratório. Não compartilhe a saída de comandos que possam revelar segredos.
 
-## Como executar
+## Executar a API
 
-Com a chave configurada, inicie a API na raiz do projeto:
+Na raiz do projeto:
 
 ```bash
-python -m uvicorn src.siem.api:app --host 127.0.0.1 --port 8000
+./scripts/soc-api.sh start
+./scripts/soc-api.sh status
 ```
 
-Acesse pelo navegador no mesmo dispositivo:
+A API foi configurada para escutar em `127.0.0.1:8000`.
 
-- Dashboard: http://127.0.0.1:8000/dashboard
-- Documentação interativa: http://127.0.0.1:8000/docs
-- Status da API: http://127.0.0.1:8000/
+- Status: `http://127.0.0.1:8000/`
+- Dashboard: `http://127.0.0.1:8000/dashboard`
+- Documentação da API: `http://127.0.0.1:8000/docs`
 
-Os endpoints abaixo exigem o cabeçalho `X-API-Key`:
+As rotas de eventos, alertas e estatísticas exigem autenticação. Envie o cabeçalho `X-API-Key` usando a mesma chave configurada no ambiente.
 
-- `POST /events` — registra um evento.
-- `GET /events` — consulta eventos registrados.
-- `GET /alerts` — consulta eventos classificados como HIGH ou CRITICAL.
-- `GET /stats` — consulta estatísticas de eventos e alertas.
+## Testes
 
-Para chamar os endpoints protegidos, envie o cabeçalho `X-API-Key` com o mesmo valor configurado em `SIEM_API_KEY`.
-
-Para executar o coletor, consulte o código em `src/detector/network_collector.py` e siga os requisitos definidos nele. A API deve estar em execução quando o coletor precisar enviar eventos.
-
-## Testes automatizados
-
-Execute na raiz do projeto:
+Execute:
 
 ```bash
-python -m pytest -v
+python -m pytest -q
 ```
 
-Na última execução registrada neste ambiente, **27 testes passaram**, sem falhas. Execute novamente para confirmar o resultado atual.
+Na validação mais recente documentada durante o desenvolvimento, 45 testes passaram. Execute novamente para conferir o estado atual. Avisos de depreciação das dependências podem aparecer mesmo quando os testes passam.
 
-## Exemplo de detecção
+## Persistência e reinicialização
 
-A regra implementada pode gerar um evento `brute_force_detected`, com severidade `CRITICAL`, após cinco falhas de login para o mesmo IP.
+O laboratório usa SQLite e arquivos JSONL para armazenar dados localmente. A persistência e a recuperação após reinicializações devem ser verificadas com testes específicos antes de serem consideradas garantidas para todos os tipos de evento.
 
-Utilize somente eventos fictícios ou ambientes de laboratório autorizados.
+Algumas regras de detecção podem manter estado apenas em memória. Esse estado pode ser perdido quando o processo reinicia; não presuma que toda correlação é persistente.
 
-## Limitações
+## Investigação e resposta a incidentes
 
-Este projeto é educacional e não substitui um SIEM de produção.
+Fluxo educacional sugerido:
 
-- Não realiza captura completa do tráfego de rede.
-- O coletor registra uma observação do IP local; isso não equivale a monitoramento completo da rede.
-- As regras de detecção são simplificadas e precisam ser avaliadas em cenários mais abrangentes.
-- A detecção de força bruta utiliza uma regra básica, sem correlação avançada ou janela temporal.
-- A lista de eventos utilizada pela regra de detecção é mantida em memória durante a execução da API.
+1. Registrar o evento e seu contexto.
+2. Conferir horário, origem, severidade e tipo do evento.
+3. Correlacionar com outros registros disponíveis.
+4. Verificar o alerta e a decisão sugerida pelo Guardian.
+5. Documentar evidências, hipótese, decisão e limitações.
+6. Repetir o cenário em ambiente autorizado e confirmar o resultado.
+
+O Guardian pode sugerir ações como investigar, monitorar ou indicar um candidato a isolamento. Uma recomendação de isolamento não significa que uma máquina foi realmente isolada.
+
+## Limitações e segurança
+
+- Projeto educacional; não é um SIEM de produção.
+- Regras de detecção simplificadas podem gerar falsos positivos e falsos negativos.
+- A análise de eventos de rede não equivale à captura completa do tráfego.
+- O estado mantido em memória pode não sobreviver a reinicializações.
+- O modo de simulação não deve ser interpretado como execução real de resposta.
+- Use somente dados fictícios, sistemas próprios ou ambientes com autorização explícita.
 
 ## Próximas melhorias
 
-- Aprimorar a correlação e as regras de detecção.
-- Expandir os testes da API e do coletor.
-- Melhorar o tratamento de eventos após reinicializações.
+- Ampliar testes da API e do coletor de rede.
+- Testar persistência e recuperação de eventos após reinicialização.
 - Documentar investigações e cenários de resposta a incidentes.
+- Melhorar tratamento de erros e observabilidade.
+- Registrar evidências reproduzíveis para o portfólio.
 
 ## Objetivo de aprendizagem
 
-Praticar análise de logs, detecção baseada em regras, APIs REST, armazenamento de eventos, autenticação, testes automatizados e controle de versão.
-
-Projeto destinado ao aprendizado de cibersegurança defensiva em ambiente de laboratório.
+Praticar análise de logs, detecção defensiva, APIs REST, armazenamento de eventos, autenticação, testes automatizados e controle de versão.
