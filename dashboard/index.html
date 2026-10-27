@@ -44,6 +44,16 @@ p { color: var(--muted); }
 .card span { color: var(--muted); font-size: 13px; }
 .card strong { display: block; font-size: 30px; margin-top: 8px; }
 h2 { font-size: 17px; margin-top: 0; }
+input[type="password"] {
+  width: 100%;
+  max-width: 420px;
+  padding: 10px;
+  margin: 8px 0;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+}
 button {
   background: var(--blue);
   color: #07111f;
@@ -75,6 +85,15 @@ footer { color: var(--muted); font-size: 12px; margin-top: 20px; }
   <div id="status" class="status">Conectando à API...</div>
 </header>
 
+<section>
+  <h2>Autenticação local</h2>
+  <label for="apiKey">Chave da API:</label><br>
+  <input id="apiKey" type="password" autocomplete="off"
+         placeholder="Cole sua chave local aqui">
+  <button type="button" onclick="saveApiKey()">Conectar</button>
+  <p>Chave mantida apenas nesta sessão do navegador.</p>
+</section>
+
 <div class="cards">
   <div class="card"><span>Total de eventos</span><strong id="total">—</strong></div>
   <div class="card"><span>Total de alertas</span><strong id="alerts">—</strong></div>
@@ -84,6 +103,13 @@ footer { color: var(--muted); font-size: 12px; margin-top: 20px; }
 <section>
   <h2>Alertas de segurança</h2>
   <div id="alertList">Carregando alertas...</div>
+</section>
+
+
+<section>
+  <h2>Guardian — Respostas defensivas</h2>
+  <p>Modo de simulação: nenhuma ação real é executada.</p>
+  <div id="guardianList">Carregando decisões do Guardian...</div>
 </section>
 
 <section>
@@ -118,22 +144,63 @@ function renderItems(container, items) {
   `).join("");
 }
 
-async function refreshDashboard() {
+async function saveApiKey() {
+  const input = document.getElementById("apiKey");
+  let key = input.value.trim();
+
+  if (!key && navigator.clipboard && navigator.clipboard.readText) {
+    try {
+      key = (await navigator.clipboard.readText()).trim();
+      if (key) input.value = key;
+    } catch (error) {
+      // Se o navegador bloquear a leitura, permite colar manualmente.
+    }
+  }
+
+  if (!key) {
+    document.getElementById("status").textContent =
+      "Não foi possível ler a chave. Cole-a no campo e toque em Conectar.";
+    return;
+  }
+
+  localStorage.setItem("siemApiKey", key);
+  sessionStorage.setItem("siemApiKey", key);
+  refreshDashboard(key);
+}
+
+async function refreshDashboard(keyOverride = null) {
   const status = document.getElementById("status");
   try {
-    const [statsResponse, eventsResponse, alertsResponse] = await Promise.all([
-      fetch("/stats"),
-      fetch("/events"),
-      fetch("/alerts")
+    const apiKey = keyOverride !== null
+      ? keyOverride
+      : (sessionStorage.getItem("siemApiKey") || localStorage.getItem("siemApiKey") || "");
+    const headers = { "X-API-Key": apiKey };
+    status.textContent = "Diagnóstico: chave digitada com " + apiKey.length + " caracteres. Testando autenticação...";
+
+    const [statsResponse, eventsResponse, alertsResponse, guardianResponse] = await Promise.all([
+      fetch("/stats", { headers }),
+      fetch("/events", { headers }),
+      fetch("/alerts", { headers }),
+      fetch("/guardian", { headers })
     ]);
 
-    if (![statsResponse, eventsResponse, alertsResponse].every(r => r.ok)) {
-      throw new Error("A API retornou um erro.");
+    const responses = [
+      ["/stats", statsResponse],
+      ["/events", eventsResponse],
+      ["/alerts", alertsResponse],
+      ["/guardian", guardianResponse]
+    ];
+    const failed = responses.filter(([url, response]) => !response.ok);
+    if (failed.length) {
+      throw new Error(failed.map(([url, response]) =>
+        url + " retornou HTTP " + response.status
+      ).join("; "));
     }
 
     const stats = await statsResponse.json();
     const eventsData = await eventsResponse.json();
     const alertsData = await alertsResponse.json();
+    const guardianData = await guardianResponse.json();
     const events = Array.isArray(eventsData) ? eventsData : eventsData.events || [];
     const alerts = Array.isArray(alertsData) ? alertsData : alertsData.alerts || [];
 
@@ -145,10 +212,26 @@ async function refreshDashboard() {
 
     renderItems(document.getElementById("alertList"), alerts);
     renderItems(document.getElementById("eventList"), events);
+
+    const guardianList = document.getElementById("guardianList");
+    const decisions = guardianData.decisions || [];
+    if (!decisions.length) {
+      guardianList.innerHTML = "<p>Nenhuma decisão disponível.</p>";
+    } else {
+      guardianList.innerHTML = decisions.slice().reverse().map(item => `
+        <div class="item">
+          <div><strong>${escapeHtml(item.action || "sem ação")}</strong>
+          — <span class="severity ${escapeHtml(item.severity || "INFO")}">${escapeHtml(item.severity || "INFO")}</span></div>
+          <div>${escapeHtml(item.reason || "")}</div>
+          <div class="meta">Origem: ${escapeHtml(item.source_ip || "não informada")}
+          · Ação executada: ${item.executed === true ? "sim" : "não"}</div>
+        </div>
+      `).join("");
+    }
     status.textContent = "● API conectada";
     status.className = "status";
   } catch (error) {
-    status.textContent = "API desconectada. Inicie o servidor no Termux.";
+    status.textContent = "Erro no painel: " + error.message;
     status.className = "error";
     document.getElementById("alertList").textContent = "Não foi possível carregar.";
     document.getElementById("eventList").textContent = "Não foi possível carregar.";

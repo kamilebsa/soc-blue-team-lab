@@ -130,3 +130,54 @@ def test_create_event_rejects_missing_api_key():
         },
     )
     assert response.status_code == 401
+
+
+def test_create_event_rejects_invalid_source_ip():
+    response = client.post("/events", json={
+        "event_type": "test_event",
+        "source_ip": "not-an-ip",
+        "message": "Teste",
+        "severity": "INFO",
+    })
+    assert response.status_code == 422
+
+
+def test_create_event_rejects_empty_message():
+    response = client.post("/events", json={
+        "event_type": "test_event",
+        "source_ip": "192.0.2.10",
+        "message": "   ",
+        "severity": "INFO",
+    })
+    assert response.status_code == 422
+
+
+def test_create_event_rejects_invalid_severity():
+    response = client.post("/events", json={
+        "event_type": "test_event",
+        "source_ip": "192.0.2.10",
+        "message": "Teste",
+        "severity": "EXTREME",
+    })
+    assert response.status_code == 422
+
+
+def test_create_event_rejects_invalid_destination_port():
+    response = client.post("/events", json={
+        "event_type": "test_event",
+        "source_ip": "192.0.2.10",
+        "message": "Teste",
+        "severity": "INFO",
+        "destination_port": 70000,
+    })
+    assert response.status_code == 422
+
+
+def test_create_event_accepts_warning_severity():
+    response = client.post("/events", json={
+        "event_type": "login_failed",
+        "source_ip": "198.51.100.200",
+        "message": "Teste de compatibilidade",
+        "severity": "WARNING",
+    })
+    assert response.status_code == 200

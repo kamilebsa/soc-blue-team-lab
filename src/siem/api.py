@@ -6,9 +6,11 @@ import secrets
 
 from fastapi import FastAPI, Header, HTTPException, Depends
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 
 from src.siem import database
+from src.detector.network_detector import analyze_network_event
+from src.guardian.guardian import evaluate_event
 
 app = FastAPI(
     title="Mini SIEM API",
@@ -27,7 +29,10 @@ API_KEY = os.getenv("SIEM_API_KEY")
 
 def verify_api_key(x_api_key: str = Header(default=None, alias="X-API-Key")):
     if not API_KEY or not x_api_key or not secrets.compare_digest(x_api_key, API_KEY):
-        raise HTTPException(status_code=401, detail="Chave de API inválida ou ausente")
+        raise HTTPException(
+            status_code=401,
+            detail="Chave de API inválida ou ausente",
+        )
 
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -37,6 +42,42 @@ class SecurityEvent(BaseModel):
     source_ip: str
     message: str
     severity: str = "INFO"
+    destination_port: int | None = None
+
+    @validator("event_type")
+    def validate_event_type(cls, value):
+        value = value.strip()
+        if not value or len(value) > 100:
+            raise ValueError("event_type deve ter entre 1 e 100 caracteres")
+        return value
+
+    @validator("source_ip")
+    def validate_source_ip(cls, value):
+        import ipaddress
+        try:
+            return str(ipaddress.ip_address(value.strip()))
+        except ValueError:
+            raise ValueError("source_ip deve ser um endereço IP válido")
+
+    @validator("message")
+    def validate_message(cls, value):
+        value = value.strip()
+        if not value or len(value) > 2000:
+            raise ValueError("message deve ter entre 1 e 2000 caracteres")
+        return value
+
+    @validator("severity")
+    def validate_severity(cls, value):
+        value = value.strip().upper()
+        if value not in {"INFO", "LOW", "MEDIUM", "WARNING", "HIGH", "CRITICAL"}:
+            raise ValueError("severity inválida")
+        return value
+
+    @validator("destination_port")
+    def validate_destination_port(cls, value):
+        if value is not None and not 1 <= value <= 65535:
+            raise ValueError("destination_port deve estar entre 1 e 65535")
+        return value
 
 
 def load_events():
@@ -128,12 +169,28 @@ def dashboard():
 
 @app.post("/events")
 def create_event(event: SecurityEvent, _: None = Depends(verify_api_key)):
-    record = event.dict()
+    record = event.dict(exclude_none=True)
     record["id"] = max(
         (item.get("id", 0) for item in events),
         default=0
     ) + 1
     record["timestamp"] = datetime.now(timezone.utc).isoformat()
+
+    network_event_types = {
+        "connection_blocked",
+        "connection_allowed",
+        "port_scan_detected",
+        "malware_detected",
+        "unauthorized_device",
+        "repeated_connection_attempts",
+        "suspicious_dns_query",
+    }
+
+    event_type = record["event_type"].strip().lower()
+    if event_type in network_event_types:
+        analysis = analyze_network_event(record)
+        record["severity"] = analysis["severity"]
+        record["message"] = analysis["message"]
 
     events.append(record)
     save_event(record)
@@ -164,6 +221,19 @@ def list_alerts(_: None = Depends(verify_api_key)):
     ]
     return {"total": len(alerts), "alerts": alerts}
 
+
+
+
+@app.get("/guardian")
+def guardian_report(_: None = Depends(verify_api_key)):
+    stored_events = database.get_events(DB_FILE)
+    decisions = [evaluate_event(event) for event in stored_events]
+    return {
+        "mode": "simulation",
+        "executed_actions": 0,
+        "total_events": len(decisions),
+        "decisions": decisions,
+    }
 
 @app.get("/stats")
 def statistics(_: None = Depends(verify_api_key)):

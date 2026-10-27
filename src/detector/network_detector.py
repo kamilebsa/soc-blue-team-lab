@@ -1,10 +1,16 @@
-"""Detector simples de eventos de rede para laboratório SOC."""
+"""Detector de eventos de rede para laboratório SOC."""
 
 
 def analyze_network_event(event):
-    """Classifica um evento de rede fictício."""
+    """Classifica eventos de rede recebidos, sem bloquear conexões."""
 
-    event_type = event.get("event_type", "").lower()
+    if not isinstance(event, dict):
+        return {
+            "severity": "LOW",
+            "message": "Evento inválido: esperado um objeto de dados",
+        }
+
+    event_type = str(event.get("event_type") or "").strip().lower()
     destination_port = event.get("destination_port")
 
     if event_type == "connection_blocked":
@@ -13,17 +19,44 @@ def analyze_network_event(event):
             "message": "Conexão bloqueada pelo controle de segurança",
         }
 
-    if event_type == "connection_allowed" and destination_port == 23:
-        return {
-            "severity": "HIGH",
-            "message": "Conexão permitida usando Telnet (porta 23)",
-        }
+    if event_type == "connection_allowed":
+        try:
+            port = int(destination_port) if destination_port is not None else None
+        except (TypeError, ValueError):
+            port = None
 
-    if event_type == "port_scan_detected":
-        return {
-            "severity": "HIGH",
-            "message": "Possível varredura de portas detectada",
-        }
+        if port == 23:
+            return {
+                "severity": "HIGH",
+                "message": "Conexão permitida usando Telnet (porta 23)",
+            }
+
+    rules = {
+        "port_scan_detected": (
+            "HIGH",
+            "Possível varredura de portas detectada",
+        ),
+        "malware_detected": (
+            "CRITICAL",
+            "Evento de possível malware detectado; investigar evidências",
+        ),
+        "unauthorized_device": (
+            "HIGH",
+            "Possível dispositivo não autorizado detectado",
+        ),
+        "repeated_connection_attempts": (
+            "HIGH",
+            "Tentativas repetidas de conexão detectadas",
+        ),
+        "suspicious_dns_query": (
+            "HIGH",
+            "Consulta DNS suspeita sinalizada para investigação",
+        ),
+    }
+
+    if event_type in rules:
+        severity, message = rules[event_type]
+        return {"severity": severity, "message": message}
 
     return {
         "severity": "LOW",

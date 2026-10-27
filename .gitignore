@@ -7,3 +7,10 @@ data/*.jsonl
 data/*.db
 .pytest_cache/
 *.bak
+
+# Logs do servidor local
+uvicorn.log
+
+# Backups locais de desenvolvimento
+*.bak
+*.bak-*
