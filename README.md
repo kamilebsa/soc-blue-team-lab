@@ -135,7 +135,7 @@ ou eficácia contra ataques em produção.
 - Projeto educacional; não é um SIEM de produção.
 - Regras de detecção simplificadas podem gerar falsos positivos e falsos negativos.
 - A análise de eventos de rede não equivale à captura completa do tráfego.
-- O estado mantido em memória pode não sobreviver a reinicializações.
+- Embora os eventos sejam armazenados em SQLite, o estado interno de algumas regras de detecção pode ser reiniciado junto com o processo.
 - O modo de simulação não deve ser interpretado como execução real de resposta.
 - Use somente dados fictícios, sistemas próprios ou ambientes com autorização explícita.
 
