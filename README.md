@@ -37,13 +37,15 @@ python -m pip install fastapi uvicorn pytest httpx
 
 ## Configuração segura
 
-Configure uma chave local antes de iniciar a API. Não coloque a chave real no código, no README ou no Git.
+A API utiliza uma chave armazenada localmente em:
 
-```bash
-export SIEM_API_KEY="SUBSTITUA_POR_UMA_CHAVE_FORTE"
-```
+`~/.config/soc-blue-team-lab/api_key`
 
-Use somente uma chave própria de laboratório. Não compartilhe a saída de comandos que possam revelar segredos.
+O script `scripts/soc-api.sh` lê esse arquivo e configura a variável `SIEM_API_KEY` ao iniciar a API. O arquivo deve existir, conter uma chave não vazia e ter permissões restritas (`600`).
+
+Não coloque a chave real no código, no README ou no Git. Não compartilhe o conteúdo do arquivo nem a saída de comandos que possam revelar segredos.
+
+Se o arquivo estiver ausente ou ilegível, o script interromperá a inicialização. Configure a chave localmente antes de iniciar a API.
 
 ## Executar a API
 

@@ -144,36 +144,27 @@ function renderItems(container, items) {
   `).join("");
 }
 
+let currentApiKey = "";
+
 async function saveApiKey() {
   const input = document.getElementById("apiKey");
-  let key = input.value.trim();
-
-  if (!key && navigator.clipboard && navigator.clipboard.readText) {
-    try {
-      key = (await navigator.clipboard.readText()).trim();
-      if (key) input.value = key;
-    } catch (error) {
-      // Se o navegador bloquear a leitura, permite colar manualmente.
-    }
-  }
+  const key = input.value.trim();
 
   if (!key) {
     document.getElementById("status").textContent =
-      "Não foi possível ler a chave. Cole-a no campo e toque em Conectar.";
+      "Cole a chave no campo e toque em Conectar.";
     return;
   }
 
-  localStorage.setItem("siemApiKey", key);
-  sessionStorage.setItem("siemApiKey", key);
-  refreshDashboard(key);
+  currentApiKey = key;
+  input.value = "";
+  await refreshDashboard();
 }
 
 async function refreshDashboard(keyOverride = null) {
   const status = document.getElementById("status");
   try {
-    const apiKey = keyOverride !== null
-      ? keyOverride
-      : (sessionStorage.getItem("siemApiKey") || localStorage.getItem("siemApiKey") || "");
+    const apiKey = keyOverride !== null ? keyOverride : currentApiKey;
     const headers = { "X-API-Key": apiKey };
     status.textContent = "Diagnóstico: chave digitada com " + apiKey.length + " caracteres. Testando autenticação...";
 
