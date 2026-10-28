@@ -110,6 +110,26 @@ Fluxo educacional sugerido:
 
 O Guardian pode sugerir ações como investigar, monitorar ou indicar um candidato a isolamento. Uma recomendação de isolamento não significa que uma máquina foi realmente isolada.
 
+## Demonstração isolada do Guardian
+
+Em 2026-10-28, foi executada uma demonstração local com um evento fictício
+de severidade `CRITICAL`, tipo `malware_detected` e endereço reservado
+para documentação (`192.0.2.10`).
+
+Resultados observados:
+
+- Persistência: o evento foi gravado em um banco SQLite temporário e
+  recuperado corretamente.
+- Avaliação: o Guardian retornou a recomendação `isolate_candidate`.
+- Justificativa: investigar e avaliar o isolamento do dispositivo.
+- Segurança: a decisão permaneceu em modo `simulation`, com
+  `executed: false`; nenhuma ação de contenção foi executada.
+- Limpeza: o banco temporário foi removido ao término do teste.
+
+Este cenário valida a persistência e a avaliação de um evento fictício.
+Não comprova detecção de malware real, isolamento efetivo de dispositivos
+ou eficácia contra ataques em produção.
+
 ## Limitações e segurança
 
 - Projeto educacional; não é um SIEM de produção.
