@@ -181,3 +181,54 @@ def test_create_event_accepts_warning_severity():
         "severity": "WARNING",
     })
     assert response.status_code == 200
+
+
+def test_brute_force_does_not_alert_before_five_failures():
+    source_ip = "198.51.100.26"
+
+    for attempt in range(4):
+        response = client.post(
+            "/events",
+            json={
+                "event_type": "login_failed",
+                "source_ip": source_ip,
+                "message": f"Falha de login {attempt + 1}",
+                "severity": "WARNING",
+            },
+        )
+
+        assert response.status_code == 200
+        assert response.json()["alert"] is None
+
+
+def test_brute_force_does_not_duplicate_alert_after_sixth_failure():
+    source_ip = "198.51.100.27"
+
+    for attempt in range(6):
+        response = client.post(
+            "/events",
+            json={
+                "event_type": "login_failed",
+                "source_ip": source_ip,
+                "message": f"Falha de login {attempt + 1}",
+                "severity": "WARNING",
+            },
+        )
+
+        assert response.status_code == 200
+
+        if attempt < 4:
+            assert response.json()["alert"] is None
+        elif attempt == 4:
+            assert response.json()["alert"]["event_type"] == "brute_force_detected"
+            assert response.json()["alert"]["severity"] == "CRITICAL"
+        else:
+            assert response.json()["alert"] is None
+
+    alerts = [
+        event for event in api.events
+        if event.get("event_type") == "brute_force_detected"
+        and event.get("source_ip") == source_ip
+    ]
+
+    assert len(alerts) == 1
