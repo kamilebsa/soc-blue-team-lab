@@ -232,3 +232,38 @@ def test_brute_force_does_not_duplicate_alert_after_sixth_failure():
     ]
 
     assert len(alerts) == 1
+
+
+def test_brute_force_detects_two_ips_independently():
+    source_ips = ["198.51.100.28", "198.51.100.29"]
+
+    for attempt in range(5):
+        for source_ip in source_ips:
+            response = client.post(
+                "/events",
+                json={
+                    "event_type": "login_failed",
+                    "source_ip": source_ip,
+                    "message": f"Falha de login {attempt + 1}",
+                    "severity": "WARNING",
+                },
+            )
+
+            assert response.status_code == 200
+
+            if attempt < 4:
+                assert response.json()["alert"] is None
+            else:
+                alert = response.json()["alert"]
+                assert alert is not None
+                assert alert["event_type"] == "brute_force_detected"
+                assert alert["severity"] == "CRITICAL"
+                assert alert["source_ip"] == source_ip
+
+    for source_ip in source_ips:
+        alerts = [
+            event for event in api.events
+            if event.get("event_type") == "brute_force_detected"
+            and event.get("source_ip") == source_ip
+        ]
+        assert len(alerts) == 1
