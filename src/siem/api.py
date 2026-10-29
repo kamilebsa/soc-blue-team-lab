@@ -158,11 +158,31 @@ def detect_brute_force(source_ip):
     if len(failures) < BRUTE_FORCE_THRESHOLD:
         return None
 
-    existing_alert = any(
-        event.get("event_type") == "brute_force_detected"
-        and event.get("source_ip") == source_ip
-        for event in events
-    )
+    existing_alert = False
+    for event in events:
+        if (
+            event.get("event_type") != "brute_force_detected"
+            or event.get("source_ip") != source_ip
+        ):
+            continue
+
+        timestamp = event.get("timestamp")
+        if not timestamp:
+            continue
+
+        try:
+            alert_time = datetime.fromisoformat(
+                timestamp.replace("Z", "+00:00")
+            )
+            if alert_time.tzinfo is None:
+                alert_time = alert_time.replace(tzinfo=timezone.utc)
+            alert_time = alert_time.astimezone(timezone.utc)
+        except (ValueError, TypeError):
+            continue
+
+        if window_start <= alert_time <= now:
+            existing_alert = True
+            break
     if existing_alert:
         return None
 

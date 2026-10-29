@@ -331,3 +331,43 @@ def test_brute_force_alerts_after_five_recent_failures(monkeypatch, tmp_path):
     assert alert is not None
     assert alert["severity"] == "CRITICAL"
     assert "últimos 5 minutos" in alert["message"]
+
+
+def test_brute_force_allows_new_incident_after_old_alert(
+    monkeypatch, tmp_path
+):
+    from datetime import datetime, timezone, timedelta
+
+    now = datetime.now(timezone.utc)
+    ip = "192.0.2.204"
+
+    old_alert = {
+        "id": 1,
+        "event_type": "brute_force_detected",
+        "source_ip": ip,
+        "timestamp": (now - timedelta(minutes=10)).isoformat(),
+        "message": "Alerta antigo",
+        "severity": "CRITICAL",
+    }
+
+    recent_failures = [
+        {
+            "id": i + 2,
+            "event_type": "login_failed",
+            "source_ip": ip,
+            "timestamp": (now - timedelta(minutes=1)).isoformat(),
+            "message": f"Falha {i + 1}",
+            "severity": "WARNING",
+        }
+        for i in range(5)
+    ]
+
+    monkeypatch.setattr(api, "events", [old_alert, *recent_failures])
+    monkeypatch.setattr(api, "DB_FILE", tmp_path / "test.db")
+    monkeypatch.setattr(api, "EVENTS_FILE", tmp_path / "events.jsonl")
+
+    alert = api.detect_brute_force(ip)
+
+    assert alert is not None
+    assert alert["event_type"] == "brute_force_detected"
+    assert alert["source_ip"] == ip
