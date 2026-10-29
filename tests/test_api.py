@@ -267,3 +267,67 @@ def test_brute_force_detects_two_ips_independently():
             and event.get("source_ip") == source_ip
         ]
         assert len(alerts) == 1
+
+
+def test_brute_force_requires_five_recent_failures(monkeypatch):
+    from datetime import datetime, timezone, timedelta
+
+    now = datetime.now(timezone.utc)
+    ip = "192.0.2.201"
+
+    monkeypatch.setattr(api, "events", [
+        {
+            "id": i,
+            "event_type": "login_failed",
+            "source_ip": ip,
+            "timestamp": (now - timedelta(minutes=1)).isoformat(),
+        }
+        for i in range(1, 5)
+    ])
+
+    assert api.detect_brute_force(ip) is None
+
+
+def test_brute_force_ignores_failures_older_than_five_minutes(monkeypatch):
+    from datetime import datetime, timezone, timedelta
+
+    now = datetime.now(timezone.utc)
+    ip = "192.0.2.202"
+
+    monkeypatch.setattr(api, "events", [
+        {
+            "id": i,
+            "event_type": "login_failed",
+            "source_ip": ip,
+            "timestamp": (now - timedelta(minutes=10)).isoformat(),
+        }
+        for i in range(1, 6)
+    ])
+
+    assert api.detect_brute_force(ip) is None
+
+
+def test_brute_force_alerts_after_five_recent_failures(monkeypatch, tmp_path):
+    from datetime import datetime, timezone, timedelta
+
+    now = datetime.now(timezone.utc)
+    ip = "192.0.2.203"
+
+    monkeypatch.setattr(api, "events", [
+        {
+            "id": i,
+            "event_type": "login_failed",
+            "source_ip": ip,
+            "timestamp": (now - timedelta(minutes=1)).isoformat(),
+        }
+        for i in range(1, 6)
+    ])
+
+    monkeypatch.setattr(api, "DB_FILE", tmp_path / "test.db")
+    monkeypatch.setattr(api, "EVENTS_FILE", tmp_path / "events.jsonl")
+
+    alert = api.detect_brute_force(ip)
+
+    assert alert is not None
+    assert alert["severity"] == "CRITICAL"
+    assert "últimos 5 minutos" in alert["message"]

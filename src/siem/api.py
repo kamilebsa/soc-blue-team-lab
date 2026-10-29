@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 import json
 import os
@@ -130,11 +130,30 @@ def is_failed_login(event):
 
 
 def detect_brute_force(source_ip):
-    failures = [
-        event for event in events
-        if event.get("source_ip") == source_ip
-        and is_failed_login(event)
-    ]
+    now = datetime.now(timezone.utc)
+    window_start = now - timedelta(minutes=5)
+
+    failures = []
+    for event in events:
+        if event.get("source_ip") != source_ip or not is_failed_login(event):
+            continue
+
+        timestamp = event.get("timestamp")
+        if not timestamp:
+            continue
+
+        try:
+            event_time = datetime.fromisoformat(
+                timestamp.replace("Z", "+00:00")
+            )
+            if event_time.tzinfo is None:
+                event_time = event_time.replace(tzinfo=timezone.utc)
+            event_time = event_time.astimezone(timezone.utc)
+        except (ValueError, TypeError):
+            continue
+
+        if window_start <= event_time <= now:
+            failures.append(event)
 
     if len(failures) < BRUTE_FORCE_THRESHOLD:
         return None
@@ -144,7 +163,6 @@ def detect_brute_force(source_ip):
         and event.get("source_ip") == source_ip
         for event in events
     )
-
     if existing_alert:
         return None
 
@@ -153,14 +171,14 @@ def detect_brute_force(source_ip):
         "source_ip": source_ip,
         "message": (
             f"Força bruta detectada: {len(failures)} "
-            "falhas de login registradas para este IP"
+            "falhas de login nos últimos 5 minutos"
         ),
         "severity": "CRITICAL",
         "id": max(
             (item.get("id", 0) for item in events),
             default=0
         ) + 1,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": now.isoformat(),
     }
 
     events.append(alert)
